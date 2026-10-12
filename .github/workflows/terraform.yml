@@ -1,0 +1,67 @@
+name: Terraform Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - feature/*
+    paths:
+      - 'environment/prod/**'
+      - 'modules/**'
+      - '.github/workflows/terraform.yml'
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    name: Terraform Init, Validate and Plan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: environment/prod
+        run: terraform init
+
+      - name: Terraform Format
+        working-directory: environment/prod
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        working-directory: environment/prod
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: environment/prod
+        run: terraform plan -input=false
+
+  terraform-apply:
+    name: Terraform Apply
+    needs: terraform
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: environment/prod
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: environment/prod
+        run: terraform apply -auto-approve
